@@ -8,21 +8,29 @@ const app = new Vue({
                 db:[]
             },    
             responseURL:null,
-            loader:false
+            links:[]
         }
     },
     methods:{
 
         download(){
-            this.loader = true
+            this.links = []
+
+            
+            if(this.data.db.length>1){
+
+                for (let i = 0; i < this.data.db.length; i++) {                    
+                    
+                    var link = `${window.location.href}download?type=${this.data.type}&db[]=${this.data.db[i]}`
+                    this.links.push(link)
+                }
+
+            }
 
             axios.get(`/download`, {params: {type: this.data.type, db: this.data.db,}
                 }).then(resp=>{
                     this.responseURL  = resp.request.responseURL
-
                     window.location.href = this.responseURL;
-
-                    this.loader = false
 
                 }) .catch(function (error) {
                     console.log(error);

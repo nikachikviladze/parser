@@ -40,10 +40,12 @@
                 </div>
               </form>  
 
-              <p v-if="responseURL"> Download Link : <a :href="this.responseURL">@{{this.responseURL}}</a></p> 
+              <ul class="list-group" v-if="responseURL"> 
+                  Download Links : 
+                  <li class="list-group-item"> <small v-if="this.links.length>1">Combine Version : </small> <a :href="this.responseURL">@{{this.responseURL}}</a></li>
+                  <li class="list-group-item" v-for="(link,index) in this.links" :key="index"><a :href="link">@{{link}}</a></li>
+              </ul> 
             
-
-              <img v-if="loader" src="https://c.tenor.com/I6kN-6X7nhAAAAAj/loading-buffering.gif" alt="">
         </div>
     </div>
 </div>
