@@ -8,6 +8,8 @@ use Response;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\DataExport;
 use Storage;
+use App\Http\Requests\FileUploadRequest;
+use App\Http\Requests\DownloadRequest;
 
 class PagesController extends Controller
 {
@@ -15,31 +17,52 @@ class PagesController extends Controller
 
         $files = Storage::files('public/DB');
 
-        return view('welcome', ['files'=>$files]);
+        return view('main', ['files'=>$files]);
     }
-    public function download(Request $request){
+    public function upload(FileUploadRequest $request)
+    {        
+        $file = $request->file('file');        
+        $filename = $file->getClientOriginalName();
+        Storage::disk('local')->putFileAs('public/DB/', $file, $filename);
 
-        $this->validate($request, ['type'=>'required|string|in:xml,csv,txt', 'db'=>'required|array']);
+        return redirect()->back()->with('success', 'Success');
 
-        $db1=collect();
-        $db2=collect();
-        $db3=collect();
-        $db4=collect();
+    }
+    public function download(DownloadRequest $request){
 
-        if(in_array('db1', $request->db)){
-            $db1 = DB::connection('mysql')->table('wp1of20_posts')->select('post_title', 'post_content')->get();
-        }
-        if(in_array('db2', $request->db)){
-            $db2 = DB::connection('mysql2')->table('wp_posts')->select('post_title', 'post_content')->get();
-        }
-        if(in_array('db3', $request->db)){
-            $db3 = DB::connection('mysql3')->table('wp1of20_posts')->select('post_title', 'post_content')->get();
-        }
-        if(in_array('db4', $request->db)){
-            $db4 = DB::connection('mysql4')->table('wp_posts')->select('post_title', 'post_content')->get();
+        $results = collect();
+
+        function cleanDB(){
+            foreach(\DB::select('SHOW TABLES') as $table) {
+                $table_array = get_object_vars($table);
+                \Schema::drop($table_array[key($table_array)]);
+            }
         }
 
-        $results = $db1->merge($db2)->merge($db3)->merge($db4);
+        foreach ($request->db as $db) {
+            try {
+                $path = Storage::disk('local')->get('public/DB/'.$db) ;
+
+                DB::unprepared($path);
+                // dd(DB::unprepared($path));
+    
+                $tables =array_map('current', \DB::select('SHOW TABLES')) ;
+                $name= null;
+                foreach ( $tables as $c ) {
+                    (str_contains ($c, '_posts'))?  $name=  $c : null;
+                }
+    
+                $db1 = DB::connection('mysql')->table($name)->select('post_title', 'post_content')->get();
+        
+                $results = $results->merge($db1);
+    
+                cleanDB();
+          
+            } catch (\Exception $e) {
+                return Response::json('SQL File error', 400);
+            }
+            
+        }
 
         function string_parser($string){
             $x = preg_split('/\r\n|\r|\n/', strip_tags($string));
@@ -84,5 +107,15 @@ class PagesController extends Controller
         if($request->type=='csv'){
             return Excel::download(new DataExport($results), 'data.csv', \Maatwebsite\Excel\Excel::CSV);
         }
+    }
+
+    public function files()
+    {
+        return view('files');
+    }
+    public function destroy_file($file)
+    {
+        Storage::delete('public/DB/'.$file);
+        return redirect()->back();
     }
 }

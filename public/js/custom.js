@@ -33,7 +33,7 @@ const app = new Vue({
                     window.location.href = this.responseURL;
 
                 }) .catch(function (error) {
-                    console.log(error);
+                    alert(error);
                 })
 
         }
